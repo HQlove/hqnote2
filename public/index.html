@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>활동 보고 틀 + 실시간 공유</title>
+  <link href="https://hangeul.pstatic.net/hangeul_static/css/NanumGgocNaeEum.css" rel="stylesheet" />
+  <link href="https://hangeul.pstatic.net/hangeul_static/css/NanumJinJuBagGyeongACe.css" rel="stylesheet" />
+  <link href="https://hangeul.pstatic.net/hangeul_static/css/NanumYeorIrCe.css" rel="stylesheet" />
+  <link href="https://hangeul.pstatic.net/hangeul_static/css/NanumGoDigANiGoGoDing.css" rel="stylesheet" />
+  <link href="https://hangeul.pstatic.net/hangeul_static/css/NanumGoRyeoGeurGgor.css" rel="stylesheet" />
+  <link href="https://hangeul.pstatic.net/hangeul_static/css/NanumGgeuTeuMeoRiCe.css" rel="stylesheet" />
+  <link href="https://hangeul.pstatic.net/hangeul_static/css/NanumBbangGuNiMamSonGeurSsi.css" rel="stylesheet" />
+  <style>
+    /* 기존 CSS 유지 */
+    html, body {
+      margin: 0; padding: 20px 15px;
+      height: 100%;
+      background: #fff;
+      font-family: 'Nanum Gothic', sans-serif;
+      user-select: none;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-sizing: border-box;
+    }
+    .container {
+      position: relative;
+      width: calc(100vw - 30px);
+      max-width: 600px;
+      aspect-ratio: 1179 / 2556;
+      user-select: none;
+    }
+    .background-image,
+    .overlay-image,
+    .record-sheet,
+    .activity-frame,
+    .report-frame {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      user-select: none;
+      object-fit: contain;
+    }
+    .background-image { z-index: 1; }
+    .overlay-image { z-index: 2; }
+    .record-sheet { z-index: 3; }
+    .activity-frame { z-index: 4; }
+    .report-frame { z-index: 5; }
+
+    textarea {
+      display: none;
+    }
+
+    @media (max-width: 1024px) {
+      textarea#date-input,
+      textarea#weather-input,
+      textarea#person-input {
+        display: block;
+        position: absolute;
+        top: 18.6%;
+        width: 42.4%;
+        height: 2.5%;
+        border: none;
+        background: transparent;
+        color: black;
+        font-family: 'NanumGgocNaeEum';
+        font-size: 2.97vw;
+        font-weight: 700;
+        resize: none;
+        outline: none;
+        user-select: text;
+        z-index: 10;
+        line-height: 1.2;
+        box-sizing: border-box;
+        -webkit-text-fill-color: black;
+      }
+      textarea#date-input { left: 5%; }
+      textarea#weather-input { left: 35.5%; }
+      textarea#person-input { left: 65%; }
+
+      textarea#activity-input,
+      textarea#etc-input {
+        display: block;
+        position: absolute;
+        left: 5%;
+        width: 88%;
+        border: none;
+        background: transparent;
+        color: black;
+        font-family: 'Nanum Gothic', sans-serif;
+        font-size: 2.97vw;
+        font-weight: 700;
+        resize: none;
+        outline: none;
+        user-select: text;
+        z-index: 10;
+        box-sizing: border-box;
+        -webkit-text-fill-color: black;
+        line-height: 1.4;
+        padding-top: 0;
+        padding-bottom: 0;
+        vertical-align: top;
+        overflow: hidden;
+      }
+      textarea#activity-input {
+        top: 24.2%;
+        height: 35%;
+      }
+      textarea#etc-input {
+        top: 60.7%;
+        height: 30%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img class="background-image" src="https://i.ibb.co/TxQzLtwq/image.png" alt="배경 이미지" draggable="false" />
+    <img class="overlay-image" src="https://i.ibb.co/vvhGRM3k/image.png" alt="훈련 일지 글자" draggable="false" />
+    <img class="record-sheet" src="https://i.ibb.co/tMvPBNJ9/image.png" alt="훈련 기록지" draggable="false" />
+    <img class="activity-frame" src="https://i.ibb.co/3yfLrRqt/image.png" alt="활동 보고 틀" draggable="false" />
+    <img class="report-frame" src="https://i.ibb.co/B5SfCJsC/image.png" alt="추가 이미지" draggable="false" />
+
+    <textarea id="date-input" maxlength="8" placeholder="_"></textarea>
+    <textarea id="weather-input" maxlength="8" placeholder="_"></textarea>
+    <textarea id="person-input" maxlength="9" placeholder="_"></textarea>
+    <textarea id="activity-input" placeholder="활동 내용 입력"></textarea>
+    <textarea id="etc-input" placeholder="기타 입력"></textarea>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    const dateInput = document.getElementById('date-input');
+    const weatherInput = document.getElementById('weather-input');
+    const personInput = document.getElementById('person-input');
+    const activityInput = document.getElementById('activity-input');
+    const etcInput = document.getElementById('etc-input');
+
+    socket.on('initData', (data) => {
+      dateInput.value = data.date || '';
+      weatherInput.value = data.weather || '';
+      personInput.value = data.person || '';
+      activityInput.value = data.activity || '';
+      etcInput.value = data.etc || '';
+    });
+
+    const sendUpdate = (field, value) => {
+      socket.emit('updateData', { [field]: value });
+    };
+
+    dateInput.addEventListener('input', (e) => sendUpdate('date', e.target.value));
+    weatherInput.addEventListener('input', (e) => sendUpdate('weather', e.target.value));
+    personInput.addEventListener('input', (e) => sendUpdate('person', e.target.value));
+    activityInput.addEventListener('input', (e) => sendUpdate('activity', e.target.value));
+    etcInput.addEventListener('input', (e) => sendUpdate('etc', e.target.value));
+
+    socket.on('updateData', (data) => {
+      for (const key in data) {
+        if (data.hasOwnProperty(key)) {
+          const input = {
+            date: dateInput,
+            weather: weatherInput,
+            person: personInput,
+            activity: activityInput,
+            etc: etcInput
+          }[key];
+
+          if (input && input.value !== data[key]) {
+            input.value = data[key];
+          }
+        }
+      }
+    });
+
+    // 랜덤 폰트 리스트
+    const fonts = [
+      'NanumJinJuBagGyeongACe',
+      'NanumYeorIrCe',
+      'NanumGoDigANiGoGoDing',
+      'NanumGoRyeoGeurGgor',
+      'NanumGgeuTeuMeoRiCe',
+      'NanumBbangGuNiMamSonGeurSsi'
+    ];
+
+    // 랜덤 폰트 적용 함수
+    function setRandomFont() {
+      const randomFont = fonts[Math.floor(Math.random() * fonts.length)];
+      activityInput.style.fontFamily = `'${randomFont}', 'Nanum Gothic', sans-serif`;
+      etcInput.style.fontFamily = `'${randomFont}', 'Nanum Gothic', sans-serif`;
+    }
+
+    // 입장 시 실행
+    setRandomFont();
+  </script>
+</body>
+</html>
+
